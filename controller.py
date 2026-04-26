@@ -42,8 +42,7 @@ class AgentController:
             # 如果模型返回的是工具调用指令，则先执行工具再继续下一轮。
             action = self._parse_tool_action(response)
             if action is None:
-                # 普通文本直接输出，并作为 assistant 消息写回上下文。
-                print_chunk(response)
+                # 普通文本已经在流式收包阶段输出过了，这里只补换行避免粘连到下一次输入。
                 print_chunk("\n")
                 self.memory.add("assistant", response)
                 return response

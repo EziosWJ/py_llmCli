@@ -55,13 +55,13 @@ def build_default_registry() -> ToolRegistry:
     registry.register(
         Tool(
             name="echo",
-            description="Return the provided text unchanged.",
+            description="计算用户输入总共有多少个字符.",
             parameters={
                 "type": "object",
                 "properties": {"text": {"type": "string"}},
                 "required": ["text"],
             },
-            handler=lambda text: text,
+            handler=lambda text: f"Text length: {len(text)}",
         )
     )
     registry.register(
