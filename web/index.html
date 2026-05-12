@@ -4,65 +4,573 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>llmbox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
+        :root {
+            --bg-deep: #06060c;
+            --bg-surface: #0c0c14;
+            --bg-elevated: #12121e;
+            --bg-hover: #1a1a2a;
+            --border: #1e1e30;
+            --border-glow: #f0b42920;
+            --amber: #f0b429;
+            --amber-dim: #f0b42960;
+            --amber-glow: #f0b42918;
+            --green: #34d399;
+            --green-dim: #34d39960;
+            --red: #f87171;
+            --text-primary: #e8e6e3;
+            --text-secondary: #8a8690;
+            --text-muted: #4a4656;
+            --font-mono: 'IBM Plex Mono', 'Menlo', monospace;
+            --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; height: 100vh; display: flex; background: #f5f5f5; }
 
-        /* 侧栏 */
-        .sidebar { width: 240px; background: #1a1a2e; color: #eee; display: flex; flex-direction: column; flex-shrink: 0; }
-        .sidebar-header { padding: 16px; font-size: 18px; font-weight: 700; border-bottom: 1px solid #333; }
-        .sidebar-actions { padding: 12px; }
-        .sidebar-actions button { width: 100%; padding: 8px; background: #16213e; color: #eee; border: 1px solid #444; border-radius: 6px; cursor: pointer; font-size: 14px; }
-        .sidebar-actions button:hover { background: #1a1a4e; }
-        .session-list { flex: 1; overflow-y: auto; padding: 8px; }
-        .session-item { padding: 10px 12px; border-radius: 6px; cursor: pointer; margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
-        .session-item:hover { background: #16213e; }
-        .session-item.active { background: #0f3460; }
-        .session-item .delete-btn { opacity: 0; background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 16px; padding: 0 4px; }
-        .session-item:hover .delete-btn { opacity: 1; }
+        body {
+            font-family: var(--font-sans);
+            height: 100vh;
+            display: flex;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            overflow: hidden;
+        }
 
-        /* 主区域 */
-        .main { flex: 1; display: flex; flex-direction: column; }
+        /* CRT 扫描线 */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,0.03) 2px,
+                rgba(0,0,0,0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 9999;
+        }
 
-        /* 消息列表 */
-        .messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .message { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; word-break: break-word; }
-        .message.user { align-self: flex-end; background: #0084ff; color: white; border-bottom-right-radius: 4px; }
-        .message.assistant { align-self: flex-start; background: white; color: #333; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        /* 噪点纹理 */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            opacity: 0.015;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9998;
+        }
 
-        /* 工具调用 */
-        .tool-call { align-self: flex-start; background: #fff3cd; color: #856404; padding: 8px 12px; border-radius: 8px; font-size: 13px; border-left: 3px solid #ffc107; max-width: 75%; }
-        .tool-call-header { cursor: pointer; display: flex; align-items: center; gap: 6px; }
-        .tool-call-header .arrow { transition: transform 0.2s; font-size: 12px; }
-        .tool-call-header .arrow.open { transform: rotate(90deg); }
-        .tool-call-detail { margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.05); border-radius: 4px; font-family: monospace; font-size: 12px; white-space: pre-wrap; display: none; }
-        .tool-call-detail.show { display: block; }
-        .tool-result { align-self: flex-start; background: #d4edda; color: #155724; padding: 8px 12px; border-radius: 8px; font-size: 13px; border-left: 3px solid #28a745; max-width: 75%; }
+        /* ========== 侧栏 ========== */
+        .sidebar {
+            width: 220px;
+            background: var(--bg-surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
 
-        /* 输入区域 */
-        .input-area { padding: 16px 20px; background: white; border-top: 1px solid #e0e0e0; display: flex; gap: 10px; }
-        .input-area textarea { flex: 1; padding: 10px 14px; border: 1px solid #ddd; border-radius: 8px; resize: none; font-size: 14px; font-family: inherit; outline: none; min-height: 42px; max-height: 120px; }
-        .input-area textarea:focus { border-color: #0084ff; }
-        .input-area button { padding: 10px 20px; background: #0084ff; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
-        .input-area button:hover { background: #0073e6; }
-        .input-area button:disabled { background: #ccc; cursor: not-allowed; }
+        .sidebar-header {
+            padding: 20px 16px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            width: 28px;
+            height: 28px;
+            background: var(--amber);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--bg-deep);
+            box-shadow: 0 0 20px var(--amber-glow), 0 0 40px var(--amber-glow);
+        }
+
+        .brand {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+        }
+
+        .brand-sub {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-weight: 400;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .sidebar-actions {
+            padding: 12px;
+        }
+
+        .btn-new {
+            width: 100%;
+            padding: 9px 12px;
+            background: transparent;
+            color: var(--amber);
+            border: 1px solid var(--amber-dim);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-new:hover {
+            background: var(--amber-glow);
+            border-color: var(--amber);
+            box-shadow: 0 0 20px var(--amber-glow);
+        }
+
+        .session-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 8px;
+        }
+
+        .session-list::-webkit-scrollbar { width: 4px; }
+        .session-list::-webkit-scrollbar-track { background: transparent; }
+        .session-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .session-item {
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+
+        .session-item:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .session-item.active {
+            background: var(--bg-elevated);
+            border-color: var(--border);
+            color: var(--amber);
+        }
+
+        .session-item .sid {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .session-item .sid::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .session-item.active .sid::before {
+            background: var(--amber);
+            box-shadow: 0 0 6px var(--amber-dim);
+        }
+
+        .session-item .delete-btn {
+            opacity: 0;
+            background: none;
+            border: none;
+            color: var(--red);
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0 2px;
+            transition: opacity 0.15s;
+        }
+
+        .session-item:hover .delete-btn { opacity: 0.6; }
+        .session-item .delete-btn:hover { opacity: 1; }
+
+        /* ========== 主区域 ========== */
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        /* 顶栏 */
+        .topbar {
+            height: 44px;
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-surface);
+            flex-shrink: 0;
+        }
+
+        .topbar-left {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .topbar-right {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--green);
+            margin-right: 6px;
+            box-shadow: 0 0 6px var(--green-dim);
+        }
+
+        /* ========== 消息列表 ========== */
+        .messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .messages::-webkit-scrollbar { width: 6px; }
+        .messages::-webkit-scrollbar-track { background: transparent; }
+        .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
         /* 空状态 */
-        .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; color: #999; font-size: 16px; }
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .empty-state .icon {
+            width: 64px;
+            height: 64px;
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 24px;
+            color: var(--text-muted);
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 0 0 transparent; }
+            50% { box-shadow: 0 0 30px var(--amber-glow); border-color: var(--amber-dim); }
+        }
+
+        .empty-state p {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        /* 消息行 */
+        .msg-row {
+            display: flex;
+            flex-direction: column;
+            animation: msg-in 0.3s ease-out;
+        }
+
+        @keyframes msg-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .msg-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            padding-left: 2px;
+        }
+
+        .msg-label.user { color: var(--amber-dim); }
+        .msg-label.assistant { color: var(--text-muted); }
+
+        /* 用户消息 */
+        .msg-bubble {
+            max-width: 72%;
+            padding: 12px 16px;
+            font-size: 14px;
+            line-height: 1.65;
+            word-break: break-word;
+        }
+
+        .msg-bubble.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #1a1520, #1e1828);
+            border: 1px solid var(--border);
+            border-radius: 12px 12px 4px 12px;
+            color: var(--text-primary);
+        }
+
+        .msg-bubble.assistant {
+            align-self: flex-start;
+            background: transparent;
+            color: var(--text-primary);
+            padding-left: 0;
+        }
+
+        .msg-bubble.assistant code {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            background: var(--bg-elevated);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            color: var(--amber);
+        }
+
+        /* 工具调用 */
+        .tool-entry {
+            align-self: flex-start;
+            max-width: 80%;
+            margin: 4px 0;
+        }
+
+        .tool-call-box {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--amber-dim);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .tool-call-header {
+            padding: 8px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--amber);
+            transition: background 0.15s;
+        }
+
+        .tool-call-header:hover { background: var(--bg-hover); }
+
+        .tool-call-header .arrow {
+            font-size: 10px;
+            transition: transform 0.2s;
+            color: var(--text-muted);
+        }
+
+        .tool-call-header .arrow.open { transform: rotate(90deg); }
+
+        .tool-call-header .tool-name {
+            font-weight: 600;
+        }
+
+        .tool-call-header .tool-args-preview {
+            color: var(--text-muted);
+            font-size: 11px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .tool-call-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .tool-call-detail.open {
+            max-height: 300px;
+        }
+
+        .tool-call-detail pre {
+            margin: 0;
+            padding: 10px 12px;
+            background: var(--bg-deep);
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        /* 工具结果 */
+        .tool-result-box {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--green-dim);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            margin: 4px 0;
+        }
+
+        .tool-result-box .result-label {
+            color: var(--green);
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .tool-result-box .result-content {
+            color: var(--text-secondary);
+        }
+
+        /* 流式光标 */
+        .streaming-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: var(--amber);
+            margin-left: 2px;
+            animation: cursor-blink 0.8s step-end infinite;
+            vertical-align: text-bottom;
+        }
+
+        @keyframes cursor-blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* ========== 输入区域 ========== */
+        .input-area {
+            padding: 16px 32px 20px;
+            background: var(--bg-surface);
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 4px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--amber-dim);
+            box-shadow: 0 0 20px var(--amber-glow), inset 0 0 20px var(--amber-glow);
+        }
+
+        .input-wrapper textarea {
+            flex: 1;
+            padding: 10px 12px;
+            background: transparent;
+            border: none;
+            resize: none;
+            font-family: var(--font-sans);
+            font-size: 14px;
+            color: var(--text-primary);
+            outline: none;
+            min-height: 42px;
+            max-height: 120px;
+            line-height: 1.5;
+        }
+
+        .input-wrapper textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-send {
+            width: 42px;
+            height: 42px;
+            background: var(--amber);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .btn-send:hover:not(:disabled) {
+            background: #f5c842;
+            box-shadow: 0 0 16px var(--amber-glow);
+        }
+
+        .btn-send:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+        }
+
+        .btn-send svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--bg-deep);
+        }
+
+        .input-hint {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            padding-left: 4px;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body x-data="chatApp()" x-init="init()">
     <!-- 侧栏 -->
     <div class="sidebar">
-        <div class="sidebar-header">llmbox</div>
+        <div class="sidebar-header">
+            <div class="logo">L</div>
+            <div>
+                <div class="brand">llmbox</div>
+                <div class="brand-sub">local agent</div>
+            </div>
+        </div>
         <div class="sidebar-actions">
-            <button @click="createSession()">+ 新建会话</button>
+            <button class="btn-new" @click="createSession()">+ NEW SESSION</button>
         </div>
         <div class="session-list">
             <template x-for="s in sessions" :key="s.id">
                 <div class="session-item" :class="{ active: s.id === sessionId }" @click="switchSession(s.id)">
-                    <span x-text="'会话 ' + s.id.slice(0, 6)"></span>
+                    <span class="sid" x-text="s.id.slice(0, 8)"></span>
                     <button class="delete-btn" @click.stop="deleteSession(s.id)">&times;</button>
                 </div>
             </template>
@@ -71,60 +579,95 @@
 
     <!-- 主区域 -->
     <div class="main">
-        <div class="messages" x-ref="messages">
-            <template x-if="!sessionId">
-                <div class="empty-state">点击「新建会话」开始对话</div>
-            </template>
-            <template x-for="(msg, i) in currentMessages" :key="i">
-                <div>
-                    <!-- 用户消息 -->
-                    <div x-show="msg.type === 'user'" class="message user" x-text="msg.content"></div>
-                    <!-- Agent 文本 -->
-                    <div x-show="msg.type === 'assistant'" class="message assistant">
-                        <span x-html="renderMarkdown(msg.content)"></span>
-                    </div>
-                    <!-- 工具调用 -->
-                    <div x-show="msg.type === 'tool_call'" class="tool-call">
-                        <div class="tool-call-header" @click="msg.expanded = !msg.expanded">
-                            <span class="arrow" :class="{ open: msg.expanded }">&#9654;</span>
-                            <span>调用工具: <strong x-text="msg.tool"></strong></span>
-                        </div>
-                        <div class="tool-call-detail" :class="{ show: msg.expanded }" x-text="JSON.stringify(msg.args, null, 2)"></div>
-                    </div>
-                    <!-- 工具结果 -->
-                    <div x-show="msg.type === 'tool_result'" class="tool-result">
-                        <strong x-text="msg.tool + ': '"></strong><span x-text="msg.result"></span>
-                    </div>
-                </div>
-            </template>
-            <!-- 流式输入指示器 -->
-            <div x-show="streaming" class="message assistant">
-                <span x-html="streamBuffer"></span><span style="animation: blink 1s infinite;">|</span>
+        <div class="topbar">
+            <div class="topbar-left" x-text="sessionId ? 'SESSION ' + sessionId.slice(0, 8) : 'NO SESSION'"></div>
+            <div class="topbar-right">
+                <span class="status-dot"></span>READY
             </div>
         </div>
 
+        <div class="messages" x-ref="messages">
+            <template x-if="!sessionId">
+                <div class="empty-state">
+                    <div class="icon">L</div>
+                    <p>create a session to start</p>
+                </div>
+            </template>
+            <template x-for="(msg, i) in currentMessages" :key="i">
+                <div class="msg-row">
+                    <!-- 用户消息 -->
+                    <template x-if="msg.type === 'user'">
+                        <div>
+                            <div class="msg-label user">you</div>
+                            <div class="msg-bubble user" x-text="msg.content"></div>
+                        </div>
+                    </template>
+                    <!-- Agent 文本 -->
+                    <template x-if="msg.type === 'assistant'">
+                        <div>
+                            <div class="msg-label assistant">agent</div>
+                            <div class="msg-bubble assistant" x-html="renderMarkdown(msg.content)"></div>
+                        </div>
+                    </template>
+                    <!-- 工具调用 -->
+                    <template x-if="msg.type === 'tool_call'">
+                        <div class="tool-entry">
+                            <div class="tool-call-box">
+                                <div class="tool-call-header" @click="msg.expanded = !msg.expanded">
+                                    <span class="arrow" :class="{ open: msg.expanded }">&#9654;</span>
+                                    <span class="tool-name" x-text="msg.tool"></span>
+                                    <span class="tool-args-preview" x-text="formatArgsPreview(msg.args)"></span>
+                                </div>
+                                <div class="tool-call-detail" :class="{ open: msg.expanded }">
+                                    <pre x-text="JSON.stringify(msg.args, null, 2)"></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <!-- 工具结果 -->
+                    <template x-if="msg.type === 'tool_result'">
+                        <div class="tool-result-box">
+                            <div class="result-label" x-text="msg.tool + ' &rarr; result'"></div>
+                            <div class="result-content" x-text="msg.result"></div>
+                        </div>
+                    </template>
+                </div>
+            </template>
+
+            <!-- 流式输出 -->
+            <template x-if="streaming">
+                <div class="msg-row">
+                    <div class="msg-label assistant">agent</div>
+                    <div class="msg-bubble assistant">
+                        <span x-html="renderMarkdown(streamBuffer)"></span><span class="streaming-indicator"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+
         <div class="input-area">
-            <textarea
-                x-model="input"
-                @keydown.enter.prevent="sendMessage()"
-                placeholder="输入消息... (Enter 发送)"
-                rows="1"
-                :disabled="!sessionId || streaming"
-            ></textarea>
-            <button @click="sendMessage()" :disabled="!input.trim() || !sessionId || streaming">发送</button>
+            <div class="input-wrapper">
+                <textarea
+                    x-model="input"
+                    @keydown.enter.prevent="sendMessage()"
+                    placeholder="send a message..."
+                    rows="1"
+                    :disabled="!sessionId || streaming"
+                ></textarea>
+                <button class="btn-send" @click="sendMessage()" :disabled="!input.trim() || !sessionId || streaming">
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                </button>
+            </div>
+            <div class="input-hint">enter to send &middot; shift+enter for newline</div>
         </div>
     </div>
-
-    <style>
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
-    </style>
 
     <script>
     function chatApp() {
         return {
             sessions: [],
             sessionId: null,
-            messages: {},  // sessionId -> messages[]
+            messages: {},
             input: '',
             streaming: false,
             streamBuffer: '',
@@ -153,18 +696,14 @@
 
             async switchSession(id) {
                 this.sessionId = id;
-                if (!this.messages[id]) {
-                    this.messages[id] = [];
-                }
+                if (!this.messages[id]) this.messages[id] = [];
                 this.$nextTick(() => this.scrollToBottom());
             },
 
             async deleteSession(id) {
                 await fetch(`/api/sessions/${id}`, { method: 'DELETE' });
                 delete this.messages[id];
-                if (this.sessionId === id) {
-                    this.sessionId = null;
-                }
+                if (this.sessionId === id) this.sessionId = null;
                 await this.refreshSessions();
             },
 
@@ -194,9 +733,8 @@
                         if (done) break;
                         buffer += decoder.decode(value, { stream: true });
 
-                        // 解析 SSE 事件
                         const lines = buffer.split('\n');
-                        buffer = lines.pop();  // 保留未完成的行
+                        buffer = lines.pop();
                         let eventType = null;
 
                         for (const line of lines) {
@@ -210,10 +748,9 @@
                         }
                     }
                 } catch (err) {
-                    this.messages[this.sessionId].push({ type: 'assistant', content: '错误: ' + err.message });
+                    this.messages[this.sessionId].push({ type: 'assistant', content: 'error: ' + err.message });
                 }
 
-                // 如果流式 buffer 有内容，追加为 assistant 消息
                 if (this.streamBuffer) {
                     this.messages[this.sessionId].push({ type: 'assistant', content: this.streamBuffer });
                 }
@@ -227,27 +764,19 @@
                     this.streamBuffer += data.content;
                     this.$nextTick(() => this.scrollToBottom());
                 } else if (type === 'tool_call') {
-                    // 先保存当前 streamBuffer
                     if (this.streamBuffer) {
                         this.messages[this.sessionId].push({ type: 'assistant', content: this.streamBuffer });
                         this.streamBuffer = '';
                     }
                     this.messages[this.sessionId].push({
-                        type: 'tool_call',
-                        tool: data.tool,
-                        args: data.args,
-                        expanded: false,
+                        type: 'tool_call', tool: data.tool, args: data.args, expanded: false,
                     });
                 } else if (type === 'tool_result') {
                     this.messages[this.sessionId].push({
-                        type: 'tool_result',
-                        tool: data.tool,
-                        result: data.result,
+                        type: 'tool_result', tool: data.tool, result: data.result,
                     });
-                } else if (type === 'done') {
-                    // done 事件在 sendMessage 的 finally 中处理
                 } else if (type === 'error') {
-                    this.streamBuffer += '\n错误: ' + data.message;
+                    this.streamBuffer += '\nerror: ' + data.message;
                 }
             },
 
@@ -256,11 +785,20 @@
                 if (el) el.scrollTop = el.scrollHeight;
             },
 
+            formatArgsPreview(args) {
+                const keys = Object.keys(args);
+                if (keys.length === 0) return '{}';
+                const first = args[keys[0]];
+                const preview = typeof first === 'string' ? first.slice(0, 30) : JSON.stringify(first);
+                return keys.length === 1 ? preview : `${keys[0]}: ${preview}...`;
+            },
+
             renderMarkdown(text) {
-                // 简单的代码块渲染
                 return text
                     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                    .replace(/`([^`]+)`/g, '<code style="background:#f0f0f0;padding:2px 4px;border-radius:3px;">$1</code>')
+                    .replace(/```([\s\S]*?)```/g, '<pre style="background:var(--bg-elevated);padding:10px;border-radius:6px;border:1px solid var(--border);font-family:var(--font-mono);font-size:13px;overflow-x:auto;margin:8px 0;">$1</pre>')
+                    .replace(/`([^`]+)`/g, '<code>$1</code>')
+                    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\n/g, '<br>');
             },
         };
