@@ -51,16 +51,16 @@ class AgentController:
             args = action["args"]
             tool = self.tools.get(tool_name)
             if tool is None:
-                # 未知工具不抛错，合并到 assistant 消息让模型有机会改正。
-                self.memory.add("assistant", f"{response}\n\nResult: Unknown tool: {tool_name}")
+                # 未知工具：结果注入为 user 消息，保持 user/assistant 交替。
+                self.memory.add("user", f"[Tool call: {response}]\nResult: Unknown tool: {tool_name}")
                 continue
 
             try:
                 result = tool.run(args)
             except Exception as exc:
                 result = f"Tool {tool_name} failed: {exc}"
-            # 工具调用和结果合并为一条 assistant 消息，避免连续 assistant 角色。
-            self.memory.add("assistant", f"{response}\n\nResult: {result}")
+            # 工具调用和结果注入为 user 消息，避免连续 assistant 角色。
+            self.memory.add("user", f"[Tool call: {response}]\nResult: {result}")
 
         # 到达上限后直接结束，避免工具调用循环拖垮交互。
         message = "Tool loop stopped: max_tool_steps reached."
@@ -147,7 +147,8 @@ Tool calling rules:
 
             tool = self.tools.get(tool_name)
             if tool is None:
-                self.memory.add("assistant", f"{response}\n\nResult: Unknown tool: {tool_name}")
+                # 结果注入为 user 消息，保持 user/assistant 交替。
+                self.memory.add("user", f"[Tool call: {response}]\nResult: Unknown tool: {tool_name}")
                 yield {"type": "tool_result", "data": {"tool": tool_name, "result": f"Unknown tool: {tool_name}"}}
                 continue
 
@@ -156,8 +157,8 @@ Tool calling rules:
             except Exception as exc:
                 result = f"Tool {tool_name} failed: {exc}"
 
-            # 工具调用和结果合并为一条 assistant 消息，避免连续 assistant 角色。
-            self.memory.add("assistant", f"{response}\n\nResult: {result}")
+            # 工具调用和结果注入为 user 消息，避免连续 assistant 角色。
+            self.memory.add("user", f"[Tool call: {response}]\nResult: {result}")
             yield {"type": "tool_result", "data": {"tool": tool_name, "result": result}}
 
         # 工具调用次数超限
