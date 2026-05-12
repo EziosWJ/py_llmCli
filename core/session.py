@@ -50,9 +50,10 @@ class SessionManager:
         self,
         defaults: GlobalDefaults | None = None,
         tools: ToolRegistry | None = None,
+        scheduler: object | None = None,
     ) -> None:
         self.defaults = defaults or GlobalDefaults()
-        self.tools = tools or build_default_registry()
+        self.tools = tools or build_default_registry(scheduler)
         self._sessions: dict[str, Session] = {}
 
     def create_session(self, overrides: SessionConfig | None = None) -> Session:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -100,8 +101,8 @@ def _write_file(path: str, content: str) -> str:
         return f"[error: {exc}]"
 
 
-def build_default_registry() -> ToolRegistry:
-    """默认注册表，提供基础工具。"""
+def build_default_registry(scheduler: Any = None) -> ToolRegistry:
+    """默认注册表，提供基础工具。scheduler 可选传入以启用定时任务工具。"""
     registry = ToolRegistry()
     registry.register(
         Tool(
@@ -166,4 +167,68 @@ def build_default_registry() -> ToolRegistry:
             handler=_write_file,
         )
     )
+
+    # 定时任务工具（需要 scheduler）
+    if scheduler is not None:
+        registry.register(
+            Tool(
+                name="timer_set",
+                description="设置倒计时提醒。到时间后会收到通知。",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "seconds": {"type": "integer", "description": "倒计时秒数"},
+                        "message": {"type": "string", "description": "提醒内容"},
+                    },
+                    "required": ["seconds", "message"],
+                },
+                handler=lambda seconds, message: f"timer created: {scheduler.set_timer(int(seconds), message)}",
+            )
+        )
+        registry.register(
+            Tool(
+                name="timer_list",
+                description="列出所有倒计时任务。",
+                parameters={"type": "object", "properties": {}, "required": []},
+                handler=lambda: json.dumps(scheduler.list_timers(), ensure_ascii=False),
+            )
+        )
+        registry.register(
+            Tool(
+                name="cron_add",
+                description="创建定时执行任务。每隔指定秒数执行一次 shell 命令。",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "interval_seconds": {"type": "integer", "description": "执行间隔（秒）"},
+                        "command": {"type": "string", "description": "要执行的 shell 命令"},
+                    },
+                    "required": ["interval_seconds", "command"],
+                },
+                handler=lambda interval_seconds, command: f"cron created: {scheduler.add_cron(int(interval_seconds), command)}",
+            )
+        )
+        registry.register(
+            Tool(
+                name="cron_list",
+                description="列出所有定时任务和最近执行结果。",
+                parameters={"type": "object", "properties": {}, "required": []},
+                handler=lambda: json.dumps(scheduler.list_crons(), ensure_ascii=False, indent=2),
+            )
+        )
+        registry.register(
+            Tool(
+                name="cron_remove",
+                description="取消指定的定时任务。",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "id": {"type": "string", "description": "任务 ID"},
+                    },
+                    "required": ["id"],
+                },
+                handler=lambda id: f"removed: {scheduler.remove_cron(id)}",
+            )
+        )
+
     return registry

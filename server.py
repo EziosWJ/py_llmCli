@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import asyncio
 import json
-from dataclasses import asdict
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -11,10 +11,30 @@ from pydantic import BaseModel
 
 from core.config import load_config
 from core.controller import AgentConfig
+from core.scheduler import Scheduler
 from core.session import GlobalDefaults, SessionConfig, SessionManager
 
 
+# --- 通知队列（Scheduler -> SSE 推送） ---
+
+_notification_queue: asyncio.Queue[tuple[str, str]] | None = None
+
+
+def _notify(title: str, body: str) -> None:
+    """Scheduler 回调，将通知推入 asyncio 队列。"""
+    if _notification_queue is not None:
+        try:
+            _notification_queue.put_nowait((title, body))
+        except Exception:
+            pass
+
+
+# --- 初始化 ---
+
 app_config = load_config()
+scheduler = Scheduler(notify=_notify)
+scheduler.start()
+
 defaults = GlobalDefaults(
     llm=app_config.llm,
     agent=AgentConfig(max_tool_steps=app_config.max_tool_steps),
@@ -23,7 +43,7 @@ defaults = GlobalDefaults(
 )
 
 app = FastAPI(title="llmbox", description="本地 LLM 工具箱 API")
-manager = SessionManager(defaults=defaults)
+manager = SessionManager(defaults=defaults, scheduler=scheduler)
 
 
 # --- 请求/响应模型 ---
@@ -141,6 +161,32 @@ async def update_session_config(session_id: str, req: UpdateConfigRequest):
     if not success:
         raise HTTPException(400, f"Unknown config key: {req.key}")
     return {"updated": True}
+
+
+@app.get("/api/events")
+async def event_stream():
+    """SSE 长连接端点，推送定时任务通知。"""
+    global _notification_queue
+    _notification_queue = asyncio.Queue()
+
+    async def generate():
+        try:
+            while True:
+                title, body = await _notification_queue.get()
+                data = json.dumps({"title": title, "body": body}, ensure_ascii=False)
+                yield f"event: notification\ndata: {data}\n\n"
+        except asyncio.CancelledError:
+            pass
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 # --- 静态文件挂载 ---

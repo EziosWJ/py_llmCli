@@ -7,6 +7,7 @@ from core.config import load_config
 from core.controller import AgentConfig, AgentController
 from core.llm_client import LLMClient, LLMConfig
 from core.memory import ConversationMemory
+from core.scheduler import Scheduler
 from core.tools import build_default_registry
 
 
@@ -30,11 +31,14 @@ def main() -> None:
     memory = ConversationMemory(app_config.system_prompt, max_turns=config.memory_turns)
     # LLM 客户端保存模型连接参数，后续通过 /set 可以动态修改。
     llm = LLMClient(config.llm)
+    # 定时任务调度器，CLI 模式用终端通知。
+    scheduler = Scheduler(notify=lambda title, body: print(f"\n[{title}] {body}\n"))
+    scheduler.start()
     # 控制器负责一次用户输入到模型输出/工具调用的完整回合。
     controller = AgentController(
         llm=llm,
         memory=memory,
-        tools=build_default_registry(),
+        tools=build_default_registry(scheduler),
         config=AgentConfig(max_tool_steps=config.max_tool_steps),
     )
 
