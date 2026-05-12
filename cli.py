@@ -31,8 +31,13 @@ def main() -> None:
     memory = ConversationMemory(app_config.system_prompt, max_turns=config.memory_turns)
     # LLM 客户端保存模型连接参数，后续通过 /set 可以动态修改。
     llm = LLMClient(config.llm)
-    # 定时任务调度器，CLI 模式用终端通知。
-    scheduler = Scheduler(notify=lambda title, body: print(f"\n[{title}] {body}\n"))
+    # 定时任务调度器，CLI 模式用终端通知（bell + 清行重绘提示符）。
+    def _cli_notify(title: str, body: str) -> None:
+        import sys
+        sys.stderr.write(f"\a\n  [{title}] {body}\n\n> ")
+        sys.stderr.flush()
+
+    scheduler = Scheduler(notify=_cli_notify)
     scheduler.start()
     # 控制器负责一次用户输入到模型输出/工具调用的完整回合。
     controller = AgentController(

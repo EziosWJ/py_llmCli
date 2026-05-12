@@ -811,14 +811,21 @@
             },
 
             connectNotifications() {
+                // 请求浏览器通知权限
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
                 const es = new EventSource('/api/events');
                 es.addEventListener('notification', (e) => {
                     const data = JSON.parse(e.data);
                     this.showToast(data.title, data.body);
+                    // 浏览器系统通知
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification(data.title, { body: data.body });
+                    }
                 });
                 es.onerror = () => {
                     es.close();
-                    // 3 秒后重连
                     setTimeout(() => this.connectNotifications(), 3000);
                 };
             },

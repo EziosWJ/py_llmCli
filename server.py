@@ -17,16 +17,15 @@ from core.session import GlobalDefaults, SessionConfig, SessionManager
 
 # --- 通知队列（Scheduler -> SSE 推送） ---
 
-_notification_queue: asyncio.Queue[tuple[str, str]] | None = None
+_notification_queue: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
 
 
 def _notify(title: str, body: str) -> None:
     """Scheduler 回调，将通知推入 asyncio 队列。"""
-    if _notification_queue is not None:
-        try:
-            _notification_queue.put_nowait((title, body))
-        except Exception:
-            pass
+    try:
+        _notification_queue.put_nowait((title, body))
+    except Exception:
+        pass
 
 
 # --- 初始化 ---
@@ -166,8 +165,6 @@ async def update_session_config(session_id: str, req: UpdateConfigRequest):
 @app.get("/api/events")
 async def event_stream():
     """SSE 长连接端点，推送定时任务通知。"""
-    global _notification_queue
-    _notification_queue = asyncio.Queue()
 
     async def generate():
         try:
