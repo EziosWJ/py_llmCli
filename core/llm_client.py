@@ -11,7 +11,7 @@ except ModuleNotFoundError as exc:
         "The 'openai' package is required. Install project dependencies before running the CLI."
     ) from exc
 
-from memory import Message
+from core.memory import Message
 
 
 @dataclass

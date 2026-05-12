@@ -3,10 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from controller import AgentConfig, AgentController
-from llm_client import LLMClient, LLMConfig
-from memory import ConversationMemory
-from tools import build_default_registry
+from core.controller import AgentConfig, AgentController
+from core.llm_client import LLMClient, LLMConfig
+from core.memory import ConversationMemory
+from core.tools import build_default_registry
 
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful local CLI assistant."

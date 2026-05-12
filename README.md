@@ -1,13 +1,15 @@
-# py-llmcli
+# llmbox
 
-一个面向本地 `llama.cpp` OpenAI 兼容服务的终端聊天代理。
+本地 LLM 工具箱，提供 CLI 和 Web Chat UI 两种交互方式，连接本地 llama.cpp server，支持流式对话和 prompt-based JSON 工具调用。
 
-它支持：
+## 功能
 
-- 流式输出
-- 多轮对话记忆
-- 基于 JSON 的提示词工具调用
+- CLI 交互模式（终端聊天）
+- Web Chat UI（浏览器聊天界面，SSE 流式推送）
+- 多轮对话记忆（滑动窗口）
+- 工具调用（prompt-based JSON，不依赖 native function calling）
 - 运行时配置调整
+- 多会话支持（Web 模式）
 
 ## 项目要求
 
@@ -17,122 +19,90 @@
 
 ## 环境准备
 
-项目约定使用虚拟环境 `.venv`。如果你已经有这个环境，可以直接激活后继续操作：
-
-```bash
-source .venv/bin/activate
-```
-
-如果还没有安装依赖，使用 `uv` 同步当前项目依赖：
-
 ```bash
 source .venv/bin/activate
 uv sync
 ```
 
-如果你需要手动补装依赖，也可以使用：
-
-```bash
-source .venv/bin/activate
-uv add openai
-```
-
 ## 启动方式
 
-先启动你的本地 `llama.cpp` 服务，再运行程序：
+### CLI 模式
 
 ```bash
-source .venv/bin/activate
-python main.py
+llmbox
 ```
 
-如果你的环境已经正确安装了项目脚本，也可以尝试：
+### Web 模式
 
 ```bash
-source .venv/bin/activate
-uv run llmcli
+llmbox serve
 ```
 
-默认连接配置如下：
+浏览器访问 `http://localhost:8000`。
+
+### 默认连接配置
 
 - `base_url`: `http://localhost:8080/v1`
 - `api_key`: `llama.cpp`
 - `model`: `local-model`
 
-## 交互命令
-
-在终端中输入以下命令可以控制会话：
+## CLI 交互命令
 
 - `/exit`：退出程序
 - `/clear`：清空对话记忆
 - `/system <文本>`：替换系统提示词
 - `/set <key> <value>`：修改运行时配置
 
-支持的配置项：
-
-- `base_url`
-- `api_key`
-- `model`
-- `temperature`
-- `max_tokens`
-- `memory_turns`
-- `max_tool_steps`
-
-示例：
-
-```bash
-/set temperature 0.2
-/set max_tokens 512
-/set memory_turns 20
-```
+支持的配置项：`base_url`、`api_key`、`model`、`temperature`、`max_tokens`、`memory_turns`、`max_tool_steps`
 
 ## 工具系统
 
-当前版本使用“提示词 + JSON 输出”的方式让模型调用工具，不依赖原生 function calling。
-
-内置示例工具：
-
-- `echo`：原样返回输入文本
-- `current_time`：返回当前本地时间
-
-模型需要调用工具时，应该只输出如下格式的 JSON：
+使用 prompt + JSON 输出方式调用工具。模型需要调用工具时输出：
 
 ```json
-{
-  "action": "tool_name",
-  "args": {}
-}
+{"action": "tool_name", "args": {}}
 ```
 
-如果不需要工具，模型应直接输出正常文本。
+内置工具：
+
+- `echo`：计算输入文本的字符数
+- `current_time`：返回当前本地时间
+
+## HTTP API
+
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/api/chat` | POST | 发送消息，返回 SSE 流 |
+| `/api/sessions` | GET | 列出会话 |
+| `/api/sessions` | POST | 创建新会话 |
+| `/api/sessions/{id}` | DELETE | 删除会话 |
+
+### SSE 事件类型
+
+| 事件 | 说明 |
+|------|------|
+| `text` | 普通文本片段 |
+| `tool_call` | 工具调用开始 |
+| `tool_result` | 工具返回结果 |
+| `done` | 本轮结束 |
+| `error` | 错误 |
 
 ## 代码结构
 
-- `cli.py`：终端交互入口
-- `controller.py`：对话回合控制与工具循环
-- `llm_client.py`：OpenAI 兼容接口封装
-- `memory.py`：对话记忆管理
-- `tools.py`：工具注册与内置工具
-- `main.py`：独立启动入口
-
-## 运行验证
-
-你可以用以下命令做基本检查：
-
-```bash
-source .venv/bin/activate
-uv run python -m compileall .
 ```
-
-如果你想做一次最小启动验证：
-
-```bash
-source .venv/bin/activate
-printf '/exit\n' | uv run python main.py
+core/
+├── controller.py    # Agent 循环
+├── memory.py        # 会话管理
+├── tools.py         # 工具注册
+└── llm_client.py    # LLM 调用
+cli.py               # CLI 前端
+server.py            # HTTP 前端（FastAPI + SSE）
+web/                 # Web Chat UI 静态文件
+main.py              # 入口（llmbox / llmbox serve）
 ```
 
 ## 说明
 
 - 本项目默认面向本地模型服务，不会主动连接公网模型。
-- 如果 `openai` 包没有安装，启动时会提示缺少依赖。
-- 工具调用失败或模型输出非 JSON 时，程序会按普通文本处理，避免会话直接中断。
+- 工具调用失败或模型输出非 JSON 时，按普通文本处理，避免会话中断。
+- Web 模式的会话存储在内存中，重启后丢失。

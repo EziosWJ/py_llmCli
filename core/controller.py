@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Callable
+from typing import Any, Callable, Generator
 
-from llm_client import LLMClient
-from memory import ConversationMemory
-from tools import ToolRegistry
+from core.llm_client import LLMClient
+from core.memory import ConversationMemory
+from core.tools import ToolRegistry
 
 
 Printer = Callable[[str], None]
@@ -109,6 +109,57 @@ Tool calling rules:
   {{"action": "tool_name", "args": {{}}}}
 - Do not include markdown fences, comments, or extra text when calling a tool.
 """
+
+    def run_turn_streaming(self, user_input: str) -> Generator[dict[str, Any], None, None]:
+        """流式执行一轮对话，yield SSE 事件字典供 HTTP 前端消费。"""
+        self.memory.add("user", user_input)
+
+        for _ in range(self.config.max_tool_steps + 1):
+            # 收集流式响应
+            chunks: list[str] = []
+            should_stream: bool | None = None
+            for chunk in self.llm.stream_chat(self._messages_for_llm()):
+                chunks.append(chunk)
+                if should_stream is None:
+                    stripped = "".join(chunks).lstrip()
+                    if not stripped:
+                        continue
+                    should_stream = not stripped.startswith("{}")
+                if should_stream:
+                    yield {"type": "text", "data": {"content": chunk}}
+
+            response = "".join(chunks).strip()
+            action = self._parse_tool_action(response)
+
+            if action is None:
+                # 普通文本
+                self.memory.add("assistant", response)
+                return
+
+            # 工具调用
+            tool_name = action["action"]
+            args = action["args"]
+            yield {"type": "tool_call", "data": {"tool": tool_name, "args": args}}
+
+            tool = self.tools.get(tool_name)
+            if tool is None:
+                self.memory.add("tool", f"Unknown tool: {tool_name}")
+                yield {"type": "tool_result", "data": {"tool": tool_name, "result": f"Unknown tool: {tool_name}"}}
+                continue
+
+            try:
+                result = tool.run(args)
+            except Exception as exc:
+                result = f"Tool {tool_name} failed: {exc}"
+
+            self.memory.add("assistant", response)
+            self.memory.add("tool", result)
+            yield {"type": "tool_result", "data": {"tool": tool_name, "result": result}}
+
+        # 工具调用次数超限
+        message = "Tool loop stopped: max_tool_steps reached."
+        self.memory.add("assistant", message)
+        yield {"type": "text", "data": {"content": message}}
 
     @staticmethod
     def _parse_tool_action(text: str) -> dict[str, object] | None:
