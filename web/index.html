@@ -5,27 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>llmbox</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         :root {
-            --bg-deep: #06060c;
-            --bg-surface: #0c0c14;
-            --bg-elevated: #12121e;
-            --bg-hover: #1a1a2a;
-            --border: #1e1e30;
-            --border-glow: #f0b42920;
-            --amber: #f0b429;
-            --amber-dim: #f0b42960;
-            --amber-glow: #f0b42918;
-            --green: #34d399;
-            --green-dim: #34d39960;
-            --red: #f87171;
-            --text-primary: #e8e6e3;
-            --text-secondary: #8a8690;
-            --text-muted: #4a4656;
-            --font-mono: 'IBM Plex Mono', 'Menlo', monospace;
-            --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+            --bg-page: #f5f0eb;
+            --bg-surface: #ffffff;
+            --bg-elevated: #faf8f5;
+            --bg-hover: #f0ebe4;
+            --bg-inset: #ece7e0;
+            --border: #e2dbd3;
+            --border-light: #ece7e0;
+            --cocoa: #3d2e24;
+            --cocoa-light: #6b5a4e;
+            --cocoa-muted: #9c8e82;
+            --caramel: #8b6a4e;
+            --caramel-light: #a8896c;
+            --caramel-bg: #8b6a4e12;
+            --caramel-border: #8b6a4e30;
+            --green: #5a8a5e;
+            --green-bg: #5a8a5e10;
+            --green-border: #5a8a5e30;
+            --red: #c45d3e;
+            --font-mono: 'Space Mono', 'Menlo', monospace;
+            --font-sans: 'Outfit', -apple-system, sans-serif;
+            --shadow-sm: 0 1px 3px rgba(61,46,36,0.04), 0 1px 2px rgba(61,46,36,0.06);
+            --shadow-md: 0 4px 12px rgba(61,46,36,0.06), 0 2px 4px rgba(61,46,36,0.04);
+            --shadow-lg: 0 8px 30px rgba(61,46,36,0.08), 0 4px 8px rgba(61,46,36,0.04);
+            --radius: 14px;
+            --radius-sm: 8px;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -34,41 +42,14 @@
             font-family: var(--font-sans);
             height: 100vh;
             display: flex;
-            background: var(--bg-deep);
-            color: var(--text-primary);
+            background: var(--bg-page);
+            color: var(--cocoa);
             overflow: hidden;
-        }
-
-        /* CRT 扫描线 */
-        body::after {
-            content: '';
-            position: fixed;
-            inset: 0;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0,0,0,0.03) 2px,
-                rgba(0,0,0,0.03) 4px
-            );
-            pointer-events: none;
-            z-index: 9999;
-        }
-
-        /* 噪点纹理 */
-        body::before {
-            content: '';
-            position: fixed;
-            inset: 0;
-            opacity: 0.015;
-            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-            pointer-events: none;
-            z-index: 9998;
         }
 
         /* ========== 侧栏 ========== */
         .sidebar {
-            width: 220px;
+            width: 240px;
             background: var(--bg-surface);
             border-right: 1px solid var(--border);
             display: flex;
@@ -77,73 +58,87 @@
         }
 
         .sidebar-header {
-            padding: 20px 16px 16px;
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .brand-row {
             display: flex;
             align-items: center;
-            gap: 10px;
-            border-bottom: 1px solid var(--border);
+            gap: 12px;
         }
 
         .logo {
-            width: 28px;
-            height: 28px;
-            background: var(--amber);
-            border-radius: 6px;
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(145deg, var(--caramel), var(--cocoa-light));
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: var(--font-mono);
-            font-weight: 600;
-            font-size: 14px;
-            color: var(--bg-deep);
-            box-shadow: 0 0 20px var(--amber-glow), 0 0 40px var(--amber-glow);
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--bg-surface);
+            box-shadow: var(--shadow-md);
         }
 
-        .brand {
+        .brand-name {
             font-family: var(--font-mono);
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            color: var(--text-primary);
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--cocoa);
+            letter-spacing: -0.5px;
         }
 
-        .brand-sub {
-            font-size: 10px;
-            color: var(--text-muted);
+        .brand-tag {
+            font-size: 11px;
+            color: var(--cocoa-muted);
             font-weight: 400;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
             text-transform: uppercase;
+            margin-top: 1px;
         }
 
         .sidebar-actions {
-            padding: 12px;
+            padding: 16px;
         }
 
         .btn-new {
             width: 100%;
-            padding: 9px 12px;
-            background: transparent;
-            color: var(--amber);
-            border: 1px solid var(--amber-dim);
-            border-radius: 6px;
+            padding: 10px 14px;
+            background: var(--cocoa);
+            color: var(--bg-surface);
+            border: none;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-family: var(--font-mono);
-            font-size: 12px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
+            font-family: var(--font-sans);
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
             transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
         }
 
         .btn-new:hover {
-            background: var(--amber-glow);
-            border-color: var(--amber);
-            box-shadow: 0 0 20px var(--amber-glow);
+            background: var(--cocoa-light);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
+        }
+
+        .sidebar-label {
+            padding: 4px 16px 8px;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--cocoa-muted);
         }
 
         .session-list {
             flex: 1;
             overflow-y: auto;
-            padding: 4px 8px;
+            padding: 0 10px 10px;
         }
 
         .session-list::-webkit-scrollbar { width: 4px; }
@@ -152,28 +147,29 @@
 
         .session-item {
             padding: 10px 12px;
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
-            margin-bottom: 2px;
+            margin-bottom: 3px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-family: var(--font-mono);
             font-size: 12px;
-            color: var(--text-secondary);
+            color: var(--cocoa-light);
             transition: all 0.15s ease;
             border: 1px solid transparent;
         }
 
         .session-item:hover {
             background: var(--bg-hover);
-            color: var(--text-primary);
+            color: var(--cocoa);
         }
 
         .session-item.active {
             background: var(--bg-elevated);
             border-color: var(--border);
-            color: var(--amber);
+            color: var(--cocoa);
+            box-shadow: var(--shadow-sm);
         }
 
         .session-item .sid {
@@ -184,16 +180,17 @@
 
         .session-item .sid::before {
             content: '';
-            width: 6px;
-            height: 6px;
+            width: 7px;
+            height: 7px;
             border-radius: 50%;
-            background: var(--text-muted);
+            background: var(--border);
             flex-shrink: 0;
+            transition: all 0.15s;
         }
 
         .session-item.active .sid::before {
-            background: var(--amber);
-            box-shadow: 0 0 6px var(--amber-dim);
+            background: var(--caramel);
+            box-shadow: 0 0 0 3px var(--caramel-bg);
         }
 
         .session-item .delete-btn {
@@ -202,12 +199,12 @@
             border: none;
             color: var(--red);
             cursor: pointer;
-            font-size: 14px;
+            font-size: 15px;
             padding: 0 2px;
             transition: opacity 0.15s;
         }
 
-        .session-item:hover .delete-btn { opacity: 0.6; }
+        .session-item:hover .delete-btn { opacity: 0.5; }
         .session-item .delete-btn:hover { opacity: 1; }
 
         /* ========== 主区域 ========== */
@@ -218,49 +215,63 @@
             min-width: 0;
         }
 
-        /* 顶栏 */
         .topbar {
-            height: 44px;
-            padding: 0 20px;
+            height: 50px;
+            padding: 0 28px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--border-light);
             background: var(--bg-surface);
             flex-shrink: 0;
         }
 
         .topbar-left {
             font-family: var(--font-mono);
-            font-size: 11px;
-            color: var(--text-muted);
-            letter-spacing: 1px;
+            font-size: 12px;
+            color: var(--cocoa-muted);
+            letter-spacing: 0.5px;
         }
 
         .topbar-right {
-            font-family: var(--font-mono);
-            font-size: 11px;
-            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--cocoa-muted);
         }
 
-        .status-dot {
-            display: inline-block;
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            background: var(--green-bg);
+            border: 1px solid var(--green-border);
+            border-radius: 20px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--green);
+        }
+
+        .status-badge::before {
+            content: '';
             width: 6px;
             height: 6px;
             border-radius: 50%;
             background: var(--green);
-            margin-right: 6px;
-            box-shadow: 0 0 6px var(--green-dim);
         }
 
         /* ========== 消息列表 ========== */
         .messages {
             flex: 1;
             overflow-y: auto;
-            padding: 24px 32px;
+            padding: 28px 40px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 6px;
         }
 
         .messages::-webkit-scrollbar { width: 6px; }
@@ -274,116 +285,134 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 16px;
+            gap: 20px;
         }
 
-        .empty-state .icon {
-            width: 64px;
-            height: 64px;
+        .empty-icon {
+            width: 72px;
+            height: 72px;
+            background: var(--bg-surface);
             border: 2px solid var(--border);
-            border-radius: 16px;
+            border-radius: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: var(--font-mono);
-            font-size: 24px;
-            color: var(--text-muted);
-            animation: pulse-glow 3s ease-in-out infinite;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--cocoa-muted);
+            box-shadow: var(--shadow-md);
         }
 
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 0 0 transparent; }
-            50% { box-shadow: 0 0 30px var(--amber-glow); border-color: var(--amber-dim); }
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--cocoa);
         }
 
         .empty-state p {
-            font-family: var(--font-mono);
-            font-size: 13px;
-            color: var(--text-muted);
+            font-size: 14px;
+            color: var(--cocoa-muted);
         }
 
         /* 消息行 */
         .msg-row {
             display: flex;
             flex-direction: column;
-            animation: msg-in 0.3s ease-out;
+            animation: msg-in 0.35s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
         @keyframes msg-in {
-            from { opacity: 0; transform: translateY(8px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         .msg-label {
             font-family: var(--font-mono);
             font-size: 10px;
+            font-weight: 700;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             margin-bottom: 6px;
             padding-left: 2px;
         }
 
-        .msg-label.user { color: var(--amber-dim); }
-        .msg-label.assistant { color: var(--text-muted); }
+        .msg-label.user { color: var(--caramel); }
+        .msg-label.assistant { color: var(--cocoa-muted); }
 
-        /* 用户消息 */
         .msg-bubble {
             max-width: 72%;
-            padding: 12px 16px;
-            font-size: 14px;
-            line-height: 1.65;
+            font-size: 15px;
+            line-height: 1.7;
             word-break: break-word;
         }
 
         .msg-bubble.user {
             align-self: flex-end;
-            background: linear-gradient(135deg, #1a1520, #1e1828);
-            border: 1px solid var(--border);
-            border-radius: 12px 12px 4px 12px;
-            color: var(--text-primary);
+            background: var(--cocoa);
+            color: var(--bg-surface);
+            padding: 12px 18px;
+            border-radius: var(--radius) var(--radius) 4px var(--radius);
+            box-shadow: var(--shadow-sm);
         }
 
         .msg-bubble.assistant {
             align-self: flex-start;
             background: transparent;
-            color: var(--text-primary);
-            padding-left: 0;
+            color: var(--cocoa);
+            padding-left: 2px;
         }
 
         .msg-bubble.assistant code {
             font-family: var(--font-mono);
             font-size: 13px;
-            background: var(--bg-elevated);
-            padding: 2px 6px;
-            border-radius: 4px;
+            background: var(--bg-inset);
+            padding: 2px 7px;
+            border-radius: 5px;
+            color: var(--caramel);
+        }
+
+        .msg-bubble.assistant pre {
+            background: var(--bg-surface);
             border: 1px solid var(--border);
-            color: var(--amber);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
+            margin: 10px 0;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 13px;
+            line-height: 1.6;
+            box-shadow: var(--shadow-sm);
         }
 
         /* 工具调用 */
         .tool-entry {
             align-self: flex-start;
             max-width: 80%;
-            margin: 4px 0;
+            margin: 6px 0;
         }
 
         .tool-call-box {
-            background: var(--bg-elevated);
+            background: var(--bg-surface);
             border: 1px solid var(--border);
-            border-left: 3px solid var(--amber-dim);
-            border-radius: 6px;
+            border-radius: var(--radius-sm);
             overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            transition: box-shadow 0.2s;
+        }
+
+        .tool-call-box:hover {
+            box-shadow: var(--shadow-md);
         }
 
         .tool-call-header {
-            padding: 8px 12px;
+            padding: 10px 14px;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
             font-family: var(--font-mono);
             font-size: 12px;
-            color: var(--amber);
             transition: background 0.15s;
         }
 
@@ -392,17 +421,29 @@
         .tool-call-header .arrow {
             font-size: 10px;
             transition: transform 0.2s;
-            color: var(--text-muted);
+            color: var(--cocoa-muted);
         }
 
         .tool-call-header .arrow.open { transform: rotate(90deg); }
 
+        .tool-tag {
+            padding: 2px 8px;
+            background: var(--caramel-bg);
+            border: 1px solid var(--caramel-border);
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--caramel);
+        }
+
         .tool-call-header .tool-name {
-            font-weight: 600;
+            font-weight: 700;
+            color: var(--cocoa);
         }
 
         .tool-call-header .tool-args-preview {
-            color: var(--text-muted);
+            color: var(--cocoa-muted);
             font-size: 11px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -415,55 +456,72 @@
             transition: max-height 0.3s ease;
         }
 
-        .tool-call-detail.open {
-            max-height: 300px;
-        }
+        .tool-call-detail.open { max-height: 300px; }
 
         .tool-call-detail pre {
             margin: 0;
-            padding: 10px 12px;
-            background: var(--bg-deep);
+            padding: 12px 14px;
+            background: var(--bg-elevated);
             font-family: var(--font-mono);
             font-size: 11px;
-            line-height: 1.5;
-            color: var(--text-secondary);
-            border-top: 1px solid var(--border);
+            line-height: 1.6;
+            color: var(--cocoa-light);
+            border-top: 1px solid var(--border-light);
             overflow-x: auto;
         }
 
         /* 工具结果 */
         .tool-result-box {
-            background: var(--bg-elevated);
+            background: var(--bg-surface);
             border: 1px solid var(--border);
-            border-left: 3px solid var(--green-dim);
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-family: var(--font-mono);
-            font-size: 12px;
+            border-radius: var(--radius-sm);
+            padding: 10px 14px;
             margin: 4px 0;
+            box-shadow: var(--shadow-sm);
         }
 
-        .tool-result-box .result-label {
-            color: var(--green);
-            font-size: 10px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+        .tool-result-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
             margin-bottom: 4px;
         }
 
-        .tool-result-box .result-content {
-            color: var(--text-secondary);
+        .result-tag {
+            padding: 2px 8px;
+            background: var(--green-bg);
+            border: 1px solid var(--green-border);
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: var(--green);
+        }
+
+        .result-tool-name {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--cocoa-muted);
+        }
+
+        .result-content {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--cocoa-light);
+            line-height: 1.5;
         }
 
         /* 流式光标 */
         .streaming-indicator {
             display: inline-block;
-            width: 8px;
+            width: 2px;
             height: 16px;
-            background: var(--amber);
+            background: var(--caramel);
             margin-left: 2px;
-            animation: cursor-blink 0.8s step-end infinite;
+            animation: cursor-blink 0.7s step-end infinite;
             vertical-align: text-bottom;
+            border-radius: 1px;
         }
 
         @keyframes cursor-blink {
@@ -473,9 +531,9 @@
 
         /* ========== 输入区域 ========== */
         .input-area {
-            padding: 16px 32px 20px;
+            padding: 16px 40px 24px;
             background: var(--bg-surface);
-            border-top: 1px solid var(--border);
+            border-top: 1px solid var(--border-light);
             flex-shrink: 0;
         }
 
@@ -483,74 +541,75 @@
             display: flex;
             gap: 10px;
             align-items: flex-end;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 4px;
+            background: var(--bg-page);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            padding: 5px;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .input-wrapper:focus-within {
-            border-color: var(--amber-dim);
-            box-shadow: 0 0 20px var(--amber-glow), inset 0 0 20px var(--amber-glow);
+            border-color: var(--caramel-light);
+            box-shadow: 0 0 0 3px var(--caramel-bg);
         }
 
         .input-wrapper textarea {
             flex: 1;
-            padding: 10px 12px;
+            padding: 10px 14px;
             background: transparent;
             border: none;
             resize: none;
             font-family: var(--font-sans);
-            font-size: 14px;
-            color: var(--text-primary);
+            font-size: 15px;
+            color: var(--cocoa);
             outline: none;
-            min-height: 42px;
+            min-height: 44px;
             max-height: 120px;
             line-height: 1.5;
         }
 
-        .input-wrapper textarea::placeholder {
-            color: var(--text-muted);
-        }
+        .input-wrapper textarea::placeholder { color: var(--cocoa-muted); }
 
         .btn-send {
-            width: 42px;
-            height: 42px;
-            background: var(--amber);
+            width: 44px;
+            height: 44px;
+            background: var(--cocoa);
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.15s;
             flex-shrink: 0;
+            box-shadow: var(--shadow-sm);
         }
 
         .btn-send:hover:not(:disabled) {
-            background: #f5c842;
-            box-shadow: 0 0 16px var(--amber-glow);
+            background: var(--caramel);
+            box-shadow: var(--shadow-md);
+            transform: translateY(-1px);
         }
 
         .btn-send:disabled {
             background: var(--border);
             cursor: not-allowed;
+            box-shadow: none;
         }
 
         .btn-send svg {
             width: 18px;
             height: 18px;
-            fill: var(--bg-deep);
+            fill: var(--bg-surface);
         }
 
         .input-hint {
             font-family: var(--font-mono);
             font-size: 10px;
-            color: var(--text-muted);
-            margin-top: 6px;
+            color: var(--cocoa-muted);
+            margin-top: 8px;
             padding-left: 4px;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
     </style>
 </head>
@@ -558,15 +617,18 @@
     <!-- 侧栏 -->
     <div class="sidebar">
         <div class="sidebar-header">
-            <div class="logo">L</div>
-            <div>
-                <div class="brand">llmbox</div>
-                <div class="brand-sub">local agent</div>
+            <div class="brand-row">
+                <div class="logo">L</div>
+                <div>
+                    <div class="brand-name">llmbox</div>
+                    <div class="brand-tag">local agent</div>
+                </div>
             </div>
         </div>
         <div class="sidebar-actions">
-            <button class="btn-new" @click="createSession()">+ NEW SESSION</button>
+            <button class="btn-new" @click="createSession()">+ New Session</button>
         </div>
+        <div class="sidebar-label">Sessions</div>
         <div class="session-list">
             <template x-for="s in sessions" :key="s.id">
                 <div class="session-item" :class="{ active: s.id === sessionId }" @click="switchSession(s.id)">
@@ -580,41 +642,40 @@
     <!-- 主区域 -->
     <div class="main">
         <div class="topbar">
-            <div class="topbar-left" x-text="sessionId ? 'SESSION ' + sessionId.slice(0, 8) : 'NO SESSION'"></div>
+            <div class="topbar-left" x-text="sessionId ? 'Session ' + sessionId.slice(0, 8) : ''"></div>
             <div class="topbar-right">
-                <span class="status-dot"></span>READY
+                <span class="status-badge">READY</span>
             </div>
         </div>
 
         <div class="messages" x-ref="messages">
             <template x-if="!sessionId">
                 <div class="empty-state">
-                    <div class="icon">L</div>
-                    <p>create a session to start</p>
+                    <div class="empty-icon">L</div>
+                    <h3>Welcome to llmbox</h3>
+                    <p>Create a session to start chatting</p>
                 </div>
             </template>
             <template x-for="(msg, i) in currentMessages" :key="i">
                 <div class="msg-row">
-                    <!-- 用户消息 -->
                     <template x-if="msg.type === 'user'">
                         <div>
                             <div class="msg-label user">you</div>
                             <div class="msg-bubble user" x-text="msg.content"></div>
                         </div>
                     </template>
-                    <!-- Agent 文本 -->
                     <template x-if="msg.type === 'assistant'">
                         <div>
                             <div class="msg-label assistant">agent</div>
                             <div class="msg-bubble assistant" x-html="renderMarkdown(msg.content)"></div>
                         </div>
                     </template>
-                    <!-- 工具调用 -->
                     <template x-if="msg.type === 'tool_call'">
                         <div class="tool-entry">
                             <div class="tool-call-box">
                                 <div class="tool-call-header" @click="msg.expanded = !msg.expanded">
                                     <span class="arrow" :class="{ open: msg.expanded }">&#9654;</span>
+                                    <span class="tool-tag">TOOL</span>
                                     <span class="tool-name" x-text="msg.tool"></span>
                                     <span class="tool-args-preview" x-text="formatArgsPreview(msg.args)"></span>
                                 </div>
@@ -624,17 +685,18 @@
                             </div>
                         </div>
                     </template>
-                    <!-- 工具结果 -->
                     <template x-if="msg.type === 'tool_result'">
                         <div class="tool-result-box">
-                            <div class="result-label" x-text="msg.tool + ' &rarr; result'"></div>
+                            <div class="tool-result-header">
+                                <span class="result-tag">RESULT</span>
+                                <span class="result-tool-name" x-text="msg.tool"></span>
+                            </div>
                             <div class="result-content" x-text="msg.result"></div>
                         </div>
                     </template>
                 </div>
             </template>
 
-            <!-- 流式输出 -->
             <template x-if="streaming">
                 <div class="msg-row">
                     <div class="msg-label assistant">agent</div>
@@ -650,7 +712,7 @@
                 <textarea
                     x-model="input"
                     @keydown.enter.prevent="sendMessage()"
-                    placeholder="send a message..."
+                    placeholder="Type a message..."
                     rows="1"
                     :disabled="!sessionId || streaming"
                 ></textarea>
@@ -658,7 +720,7 @@
                     <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                 </button>
             </div>
-            <div class="input-hint">enter to send &middot; shift+enter for newline</div>
+            <div class="input-hint">press enter to send</div>
         </div>
     </div>
 
@@ -796,7 +858,7 @@
             renderMarkdown(text) {
                 return text
                     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                    .replace(/```([\s\S]*?)```/g, '<pre style="background:var(--bg-elevated);padding:10px;border-radius:6px;border:1px solid var(--border);font-family:var(--font-mono);font-size:13px;overflow-x:auto;margin:8px 0;">$1</pre>')
+                    .replace(/```([\s\S]*?)```/g, '<pre>$1</pre>')
                     .replace(/`([^`]+)`/g, '<code>$1</code>')
                     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
                     .replace(/\n/g, '<br>');
