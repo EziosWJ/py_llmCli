@@ -1,20 +1,23 @@
+import argparse
 import sys
 
 from cli import main as cli_main
 
 
-def serve():
+def serve(host: str = "0.0.0.0", port: int = 8000):
     """启动 HTTP 服务（llmbox serve）。"""
     import uvicorn
-    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run("server:app", host=host, port=port, reload=False)
 
 
 def cli_entry():
     """llmbox 命令行入口，支持子命令 serve。"""
     if len(sys.argv) > 1 and sys.argv[1] == "serve":
-        # 移除 "serve" 子命令，让 uvicorn 正常解析剩余参数
-        sys.argv = [sys.argv[0]] + sys.argv[2:]
-        serve()
+        parser = argparse.ArgumentParser(prog="llmbox serve", description="启动 HTTP 服务")
+        parser.add_argument("--host", default="0.0.0.0", help="监听地址（默认 0.0.0.0）")
+        parser.add_argument("--port", type=int, default=8000, help="监听端口（默认 8000）")
+        args = parser.parse_args(sys.argv[2:])
+        serve(host=args.host, port=args.port)
     else:
         cli_main()
 
