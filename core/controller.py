@@ -51,18 +51,16 @@ class AgentController:
             args = action["args"]
             tool = self.tools.get(tool_name)
             if tool is None:
-                # 未知工具不抛错，写入工具消息让模型有机会改正。
-                self.memory.add("tool", f"Unknown tool: {tool_name}")
+                # 未知工具不抛错，合并到 assistant 消息让模型有机会改正。
+                self.memory.add("assistant", f"{response}\n\nResult: Unknown tool: {tool_name}")
                 continue
 
             try:
-                # 工具执行失败时把异常信息写回上下文，便于模型根据失败原因重试。
                 result = tool.run(args)
             except Exception as exc:
                 result = f"Tool {tool_name} failed: {exc}"
-            # 先记录模型原始工具请求，再记录工具执行结果，方便后续回看上下文。
-            self.memory.add("assistant", response)
-            self.memory.add("tool", result)
+            # 工具调用和结果合并为一条 assistant 消息，避免连续 assistant 角色。
+            self.memory.add("assistant", f"{response}\n\nResult: {result}")
 
         # 到达上限后直接结束，避免工具调用循环拖垮交互。
         message = "Tool loop stopped: max_tool_steps reached."
@@ -149,7 +147,7 @@ Tool calling rules:
 
             tool = self.tools.get(tool_name)
             if tool is None:
-                self.memory.add("tool", f"Unknown tool: {tool_name}")
+                self.memory.add("assistant", f"{response}\n\nResult: Unknown tool: {tool_name}")
                 yield {"type": "tool_result", "data": {"tool": tool_name, "result": f"Unknown tool: {tool_name}"}}
                 continue
 
@@ -158,8 +156,8 @@ Tool calling rules:
             except Exception as exc:
                 result = f"Tool {tool_name} failed: {exc}"
 
-            self.memory.add("assistant", response)
-            self.memory.add("tool", result)
+            # 工具调用和结果合并为一条 assistant 消息，避免连续 assistant 角色。
+            self.memory.add("assistant", f"{response}\n\nResult: {result}")
             yield {"type": "tool_result", "data": {"tool": tool_name, "result": result}}
 
         # 工具调用次数超限

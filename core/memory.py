@@ -35,13 +35,8 @@ class ConversationMemory:
 
     def messages(self, system_prompt: str | None = None) -> list[Message]:
         # 每次请求都把系统消息放在最前面，其余历史消息按时间顺序拼接。
-        # tool 角色转为 assistant，兼容不支持 tool 角色的后端（如 llama.cpp）。
         prompt = system_prompt if system_prompt is not None else self.system_prompt
-        converted = [
-            {"role": ("assistant" if m["role"] == "tool" else m["role"]), "content": m["content"]}
-            for m in self._messages
-        ]
-        return [{"role": "system", "content": prompt}, *converted]
+        return [{"role": "system", "content": prompt}, *self._messages]
 
     def _trim(self) -> None:
         # 只保留最近的 max_turns 轮，每轮按 user + assistant 计算两条消息。
