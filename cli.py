@@ -3,13 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from core.config import load_config
 from core.controller import AgentConfig, AgentController
 from core.llm_client import LLMClient, LLMConfig
 from core.memory import ConversationMemory
 from core.tools import build_default_registry
-
-
-DEFAULT_SYSTEM_PROMPT = "You are a helpful local CLI assistant."
 
 
 @dataclass
@@ -21,10 +19,15 @@ class CLIConfig:
 
 
 def main() -> None:
-    # 入口只负责组装对象，不承载业务逻辑，便于后续拆分或测试。
-    config = CLIConfig(llm=LLMConfig())
+    # 从配置文件加载默认值，未找到则使用内置默认值。
+    app_config = load_config()
+    config = CLIConfig(
+        llm=app_config.llm,
+        memory_turns=app_config.memory_turns,
+        max_tool_steps=app_config.max_tool_steps,
+    )
     # 对话记忆从默认系统提示开始，并保留最近若干轮上下文。
-    memory = ConversationMemory(DEFAULT_SYSTEM_PROMPT, max_turns=config.memory_turns)
+    memory = ConversationMemory(app_config.system_prompt, max_turns=config.memory_turns)
     # LLM 客户端保存模型连接参数，后续通过 /set 可以动态修改。
     llm = LLMClient(config.llm)
     # 控制器负责一次用户输入到模型输出/工具调用的完整回合。

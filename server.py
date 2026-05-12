@@ -9,13 +9,21 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from core.config import load_config
 from core.controller import AgentConfig
-from core.llm_client import LLMConfig
 from core.session import GlobalDefaults, SessionConfig, SessionManager
 
 
+app_config = load_config()
+defaults = GlobalDefaults(
+    llm=app_config.llm,
+    agent=AgentConfig(max_tool_steps=app_config.max_tool_steps),
+    memory_turns=app_config.memory_turns,
+    system_prompt=app_config.system_prompt,
+)
+
 app = FastAPI(title="llmbox", description="本地 LLM 工具箱 API")
-manager = SessionManager()
+manager = SessionManager(defaults=defaults)
 
 
 # --- 请求/响应模型 ---
