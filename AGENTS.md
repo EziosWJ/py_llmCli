@@ -20,6 +20,11 @@
 * 运行脚本优先使用 `uv run`
 * 不使用 pip、pipenv、poetry 等其他工具
 
+## 命令执行规范
+
+* 修改代码后可以运行必要的最小验证命令
+* 如需运行完整测试、安装依赖、访问网络或执行耗时命令，必须先说明原因并征得用户同意
+
 ## 编码规范
 
 * 遵循 PEP8
@@ -58,3 +63,16 @@
 * 不得擅自改变技术选型
 * 不得引入未说明的复杂依赖
 
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues（通过 `gh` CLI 操作）。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用 5 个标准标签：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文布局：`CONTEXT.md` + `docs/adr/` 在仓库根目录。详见 `docs/agents/domain.md`。
