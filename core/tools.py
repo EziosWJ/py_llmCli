@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import subprocess
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Callable
 
 
@@ -49,8 +51,57 @@ class ToolRegistry:
         return "\n".join(tool.prompt_description() for tool in self._tools.values())
 
 
+def _run_shell(command: str, timeout: int = 30) -> str:
+    """执行 shell 命令，返回 stdout + stderr。"""
+    try:
+        result = subprocess.run(
+            command, shell=True, capture_output=True, text=True, timeout=timeout,
+        )
+        output = ""
+        if result.stdout:
+            output += result.stdout
+        if result.stderr:
+            output += ("\n" if output else "") + result.stderr
+        if result.returncode != 0:
+            output += f"\n[exit code: {result.returncode}]"
+        return output.strip() or "[no output]"
+    except subprocess.TimeoutExpired:
+        return f"[timeout: command exceeded {timeout}s]"
+    except Exception as exc:
+        return f"[error: {exc}]"
+
+
+def _read_file(path: str, max_lines: int = 500) -> str:
+    """读取文件内容，限制行数防止上下文溢出。"""
+    p = Path(path).expanduser()
+    if not p.exists():
+        return f"[error: file not found: {path}]"
+    if not p.is_file():
+        return f"[error: not a file: {path}]"
+    try:
+        lines = p.read_text(encoding="utf-8", errors="replace").splitlines()
+        if len(lines) > max_lines:
+            head = lines[:max_lines]
+            head.append(f"\n... ({len(lines) - max_lines} more lines truncated)")
+            return "\n".join(head)
+        return "\n".join(lines)
+    except Exception as exc:
+        return f"[error: {exc}]"
+
+
+def _write_file(path: str, content: str) -> str:
+    """写入文件内容，自动创建父目录。"""
+    p = Path(path).expanduser()
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(content, encoding="utf-8")
+        return f"wrote {len(content)} chars to {path}"
+    except Exception as exc:
+        return f"[error: {exc}]"
+
+
 def build_default_registry() -> ToolRegistry:
-    # 默认注册表提供最基础的示例工具，便于验证工具调用链路。
+    """默认注册表，提供基础工具。"""
     registry = ToolRegistry()
     registry.register(
         Tool(
@@ -70,6 +121,49 @@ def build_default_registry() -> ToolRegistry:
             description="Return the current local date and time in ISO 8601 format.",
             parameters={"type": "object", "properties": {}, "required": []},
             handler=lambda: datetime.now().isoformat(timespec="seconds"),
+        )
+    )
+    registry.register(
+        Tool(
+            name="shell",
+            description="执行 shell 命令并返回输出。可用于查看目录、运行程序等。",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "command": {"type": "string", "description": "要执行的 shell 命令"},
+                },
+                "required": ["command"],
+            },
+            handler=_run_shell,
+        )
+    )
+    registry.register(
+        Tool(
+            name="read_file",
+            description="读取文件内容。返回文件的文本内容，超过 500 行会截断。",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "文件路径"},
+                },
+                "required": ["path"],
+            },
+            handler=_read_file,
+        )
+    )
+    registry.register(
+        Tool(
+            name="write_file",
+            description="写入文件内容。自动创建父目录。会覆盖已有内容。",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "文件路径"},
+                    "content": {"type": "string", "description": "要写入的内容"},
+                },
+                "required": ["path", "content"],
+            },
+            handler=_write_file,
         )
     )
     return registry
