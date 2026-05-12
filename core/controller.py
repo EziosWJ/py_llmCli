@@ -40,7 +40,7 @@ class AgentController:
             # 每次循环都重新向模型发送完整上下文，包含最新的工具结果。
             response = self._collect_response(print_chunk)
             # 如果模型返回的是工具调用指令，则先执行工具再继续下一轮。
-            action = self._parse_tool_action(response)
+            action = self._parse_tool_action(response) or self._extract_tool_action(response)
             if action is None:
                 # 普通文本已经在流式收包阶段输出过了，这里只补换行避免粘连到下一次输入。
                 print_chunk("\n")
@@ -104,10 +104,12 @@ Available tools:
 {self.tools.prompt_descriptions()}
 
 Tool calling rules:
-- If no tool is needed, answer normally.
-- If a tool is needed, return ONLY valid JSON with this shape:
-  {{"action": "tool_name", "args": {{}}}}
-- Do not include markdown fences, comments, or extra text when calling a tool.
+- If no tool is needed, answer normally in plain text.
+- If a tool is needed, return ONLY the raw JSON object, nothing else:
+  {{"action": "tool_name", "args": {{"param": "value"}}}}
+- Do NOT wrap JSON in markdown fences.
+- Do NOT add any text before or after the JSON (no "json", no explanation).
+- The response must start with {{ and end with }} when calling a tool.
 """
 
     def run_turn_streaming(self, user_input: str) -> Generator[dict[str, Any], None, None]:
@@ -124,19 +126,23 @@ Tool calling rules:
                     stripped = "".join(chunks).lstrip()
                     if not stripped:
                         continue
-                    should_stream = not stripped.startswith("{}")
+                    should_stream = not stripped.startswith("{")
                 if should_stream:
                     yield {"type": "text", "data": {"content": chunk}}
 
             response = "".join(chunks).strip()
-            action = self._parse_tool_action(response)
+            # 尝试解析工具调用，支持从文本中提取 JSON
+            action = self._parse_tool_action(response) or self._extract_tool_action(response)
 
             if action is None:
                 # 普通文本
                 self.memory.add("assistant", response)
                 return
 
-            # 工具调用
+            # 工具调用：把模型的 JSON 输出也作为文本展示给用户
+            if should_stream is False:
+                yield {"type": "text", "data": {"content": response + "\n"}}
+
             tool_name = action["action"]
             args = action["args"]
             yield {"type": "tool_call", "data": {"tool": tool_name, "args": args}}
@@ -163,13 +169,11 @@ Tool calling rules:
 
     @staticmethod
     def _parse_tool_action(text: str) -> dict[str, object] | None:
-        # 工具调用要求模型只返回 JSON；如果解析失败，就把它当作普通文本处理。
+        """尝试将整个文本解析为工具调用 JSON。"""
         try:
             data = json.loads(text)
         except json.JSONDecodeError:
             return None
-
-        # 只有最外层是字典，并且包含 action/args 才认定为工具调用。
         if not isinstance(data, dict):
             return None
         action = data.get("action")
@@ -177,3 +181,25 @@ Tool calling rules:
         if not isinstance(action, str) or not isinstance(args, dict):
             return None
         return {"action": action, "args": args}
+
+    @staticmethod
+    def _extract_tool_action(text: str) -> dict[str, object] | None:
+        """从文本中提取 JSON 工具调用（处理模型输出带前缀/后缀的情况）。"""
+        # 去掉 markdown 代码块包裹
+        import re
+        cleaned = re.sub(r"```(?:json)?\s*", "", text).strip().rstrip("`").strip()
+        if cleaned != text.strip():
+            action = AgentController._parse_tool_action(cleaned)
+            if action is not None:
+                return action
+
+        # 尝试提取第一个 JSON 对象
+        start = text.find("{")
+        if start == -1:
+            return None
+        # 从右往找最后一个 }
+        end = text.rfind("}")
+        if end <= start:
+            return None
+        candidate = text[start:end + 1]
+        return AgentController._parse_tool_action(candidate)
