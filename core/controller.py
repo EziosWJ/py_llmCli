@@ -176,9 +176,14 @@ Tool calling rules:
         if not isinstance(data, dict):
             return None
         action = data.get("action")
-        args = data.get("args", {})
-        if not isinstance(action, str) or not isinstance(args, dict):
+        if not isinstance(action, str):
             return None
+        # 兼容两种格式：{"action": "x", "args": {...}} 和 {"action": "x", "param": "val"}
+        args = data.get("args")
+        if isinstance(args, dict):
+            return {"action": action, "args": args}
+        # 没有 args 字段时，将除 action 外的所有键作为参数
+        args = {k: v for k, v in data.items() if k != "action"}
         return {"action": action, "args": args}
 
     @staticmethod
